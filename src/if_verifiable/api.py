@@ -1,16 +1,16 @@
 """Main API for if-verifiable package."""
 
 from typing import Iterator
+
 from datasets import load_dataset
 
+from if_verifiable.common import EvaluationScores, InstructionResult, evaluate_instructions
 from if_verifiable.types import (
-    IFEvalSample,
-    IFBenchSample,
-    BenchmarkSample,
     BenchmarkName,
+    BenchmarkSample,
+    IFBenchSample,
+    IFEvalSample,
 )
-from if_verifiable.common import evaluate_instructions, InstructionResult, EvaluationScores
-
 
 # Dataset names on HuggingFace
 _DATASETS = {
