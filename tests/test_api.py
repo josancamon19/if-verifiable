@@ -1,8 +1,12 @@
 """Tests for the if-verifiable API."""
 
+import asyncio
+from unittest.mock import patch
+
 import pytest
 
 from if_verifiable import (
+    EvalResult,
     EvaluationScores,
     IFBenchSample,
     IFEvalSample,
@@ -10,6 +14,8 @@ from if_verifiable import (
     RewardType,
     evaluate_output_for_sample,
     get_eval_data,
+    run_eval,
+    run_eval_async,
 )
 
 
@@ -147,3 +153,107 @@ class TestRewardType:
         # All RewardType values should be valid score keys
         for rt in RewardType:
             assert hasattr(scores, rt.value)
+
+
+class TestRunEval:
+    def test_run_eval_returns_correct_structure(self):
+        # Get a small subset of samples for testing
+        samples = list(get_eval_data("ifeval"))[:3]
+        responses = ["Test response"] * len(samples)
+
+        # Mock get_eval_data to return only our subset
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            results = run_eval("ifeval", responses, max_workers=1)
+
+        assert len(results) == 3
+        for sample, response, instruction_results, scores in results:
+            assert isinstance(sample, IFEvalSample)
+            assert isinstance(response, str)
+            assert isinstance(instruction_results, list)
+            assert isinstance(scores, EvaluationScores)
+
+    def test_run_eval_mismatched_length_raises(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            with pytest.raises(ValueError, match="Expected 3 responses, got 2"):
+                run_eval("ifeval", ["a", "b"], max_workers=1)
+
+    def test_run_eval_preserves_order(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+        responses = ["response_0", "response_1", "response_2"]
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            results = run_eval("ifeval", responses, max_workers=1)
+
+        for i, (sample, response, _, _) in enumerate(results):
+            assert response == f"response_{i}"
+            assert sample.key == samples[i].key
+
+
+class TestRunEvalAsync:
+    def test_run_eval_async_returns_correct_structure(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+
+        async def mock_response(text: str) -> str:
+            return text
+
+        coroutines = [mock_response("Test response") for _ in samples]
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            results = asyncio.run(run_eval_async("ifeval", coroutines))
+
+        assert len(results) == 3
+        for sample, response, instruction_results, scores in results:
+            assert isinstance(sample, IFEvalSample)
+            assert response == "Test response"
+            assert isinstance(instruction_results, list)
+            assert isinstance(scores, EvaluationScores)
+
+    def test_run_eval_async_with_map_fn(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+
+        async def mock_api_response(idx: int) -> dict:
+            return {"content": f"response_{idx}", "status": 200}
+
+        coroutines = [mock_api_response(i) for i in range(len(samples))]
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            results = asyncio.run(
+                run_eval_async("ifeval", coroutines, map_fn=lambda r: r["content"])
+            )
+
+        assert len(results) == 3
+        for i, (_, response, _, _) in enumerate(results):
+            assert response == f"response_{i}"
+
+    def test_run_eval_async_mismatched_length_raises(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+
+        async def run_with_wrong_count() -> None:
+            async def mock_response() -> str:
+                return "test"
+
+            await run_eval_async("ifeval", [mock_response(), mock_response()])
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            with pytest.raises(ValueError, match="Expected 3 coroutines, got 2"):
+                asyncio.run(run_with_wrong_count())
+
+    def test_run_eval_async_preserves_order(self):
+        samples = list(get_eval_data("ifeval"))[:3]
+
+        async def mock_response(idx: int) -> str:
+            # Add varying delays to test order preservation
+            await asyncio.sleep(0.01 * (3 - idx))
+            return f"response_{idx}"
+
+        coroutines = [mock_response(i) for i in range(len(samples))]
+
+        with patch("if_verifiable.api.get_eval_data", return_value=iter(samples)):
+            results = asyncio.run(run_eval_async("ifeval", coroutines))
+
+        # Results should be in input order, not completion order
+        for i, (sample, response, _, _) in enumerate(results):
+            assert response == f"response_{i}"
+            assert sample.key == samples[i].key

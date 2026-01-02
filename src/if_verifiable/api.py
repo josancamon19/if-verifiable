@@ -1,6 +1,8 @@
 """Main API for if-verifiable package."""
 
-from typing import Iterator
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
+from typing import Awaitable, Callable, Iterator, TypeVar
 
 from datasets import load_dataset
 
@@ -12,8 +14,10 @@ from if_verifiable.types import (
     IFEvalSample,
 )
 
+T = TypeVar("T")
+
 # Dataset names on HuggingFace
-_DATASETS = {
+_DATASETS: dict[str, str] = {
     "ifeval": "google/IFEval",
     "ifbench": "allenai/IFBench_test",
 }
@@ -124,3 +128,70 @@ def evaluate_output_for_sample(
         prompt=sample.prompt,
         instruction_registry=INSTRUCTION_DICT,
     )
+
+
+# Type alias for evaluation result
+ModelResponse = str
+EvalResult = tuple[BenchmarkSample, ModelResponse, list[InstructionResult], EvaluationScores]
+
+
+def _eval_single(args: tuple[BenchmarkName, BenchmarkSample, ModelResponse]) -> EvalResult:
+    """Worker function for multiprocessing."""
+    benchmark, sample, response = args
+    results, scores = evaluate_output_for_sample(benchmark, sample, response)
+    return sample, response, results, scores
+
+
+def run_eval(
+    benchmark: BenchmarkName,
+    model_responses: list[str],
+    max_workers: int | None = None,
+) -> list[EvalResult]:
+    """Run evaluation on all model responses with optional parallelization.
+
+    Args:
+        benchmark: Either "ifbench" or "ifeval".
+        model_responses: List of model responses, one per sample in the dataset.
+        max_workers: Number of parallel workers. None = auto (cpu count).
+
+    Returns:
+        List of (sample, response, instruction_results, scores) tuples.
+    """
+    samples: list[BenchmarkSample] = list(get_eval_data(benchmark))
+    if len(model_responses) != len(samples):
+        raise ValueError(f"Expected {len(samples)} responses, got {len(model_responses)}")
+
+    args: list[tuple[BenchmarkName, BenchmarkSample, str]] = [
+        (benchmark, sample, response) for sample, response in zip(samples, model_responses)
+    ]
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        return list(executor.map(_eval_single, args))
+
+
+async def run_eval_async(
+    benchmark: BenchmarkName,
+    coroutines: list[Awaitable[T]],
+    map_fn: Callable[[T], str] = lambda x: str(x),
+) -> list[EvalResult]:
+    """Run evaluation on coroutines concurrently.
+
+    Args:
+        benchmark: Either "ifbench" or "ifeval".
+        coroutines: List of coroutines that return any value.
+        map_fn: Function to extract response string from coroutine result.
+
+    Returns:
+        List of (sample, response, instruction_results, scores) tuples in input order.
+    """
+    samples: list[BenchmarkSample] = list(get_eval_data(benchmark))
+    if len(coroutines) != len(samples):
+        raise ValueError(f"Expected {len(samples)} coroutines, got {len(coroutines)}")
+
+    async def eval_one(idx: int, coro: Awaitable[T]) -> EvalResult:
+        result: T = await coro
+        response: str = map_fn(result)
+        results, scores = evaluate_output_for_sample(benchmark, samples[idx], response)
+        return samples[idx], response, results, scores
+
+    return list(await asyncio.gather(*[eval_one(i, c) for i, c in enumerate(coroutines)]))

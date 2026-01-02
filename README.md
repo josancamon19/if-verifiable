@@ -40,6 +40,40 @@ for result in results:
     print(f"  {result.instruction_id}: strict={result.strict_pass}, loose={result.loose_pass}")
 ```
 
+### Batch Evaluation
+
+```python
+from if_verifiable import run_eval, run_eval_async, get_eval_data
+
+# Sync batch evaluation with multiprocessing
+model_responses = ["response1", "response2", ...]  # One per sample
+results = run_eval("ifeval", model_responses, max_workers=8)
+
+for sample, response, instruction_results, scores in results:
+    print(f"{sample.key}: {scores.partial_strict:.2%}")
+```
+
+### Async Evaluation
+
+```python
+import asyncio
+from if_verifiable import run_eval_async, get_eval_data
+
+async def get_model_response(prompt: str) -> dict:
+    # Your async API call here
+    return {"content": "model response", "usage": {...}}
+
+samples = list(get_eval_data("ifeval"))
+coroutines = [get_model_response(s.prompt) for s in samples]
+
+# Evaluate concurrently with a map function to extract the response string
+results = await run_eval_async(
+    "ifeval",
+    coroutines,
+    map_fn=lambda r: r["content"]
+)
+```
+
 ## API
 
 ### `get_eval_data(benchmark: str) -> Iterator[BenchmarkSample]`
@@ -64,6 +98,26 @@ Returns:
   - `partial_loose`: Fraction of instructions passed (loose - allows formatting variations)
   - `binary_strict`: 1.0 if ALL instructions passed strict, else 0.0
   - `binary_loose`: 1.0 if ALL instructions passed loose, else 0.0
+
+### `run_eval(benchmark, model_responses, max_workers=None) -> list[EvalResult]`
+
+Batch evaluate all responses with multiprocessing.
+
+- `benchmark`: Either `"ifeval"` or `"ifbench"`
+- `model_responses`: List of response strings, one per sample in dataset
+- `max_workers`: Number of parallel workers (None = auto)
+
+Returns list of `(sample, response, instruction_results, scores)` tuples.
+
+### `run_eval_async(benchmark, coroutines, map_fn=str) -> list[EvalResult]`
+
+Evaluate responses from async coroutines concurrently.
+
+- `benchmark`: Either `"ifeval"` or `"ifbench"`
+- `coroutines`: List of awaitables, one per sample
+- `map_fn`: Function to extract response string from coroutine result
+
+Returns list of `(sample, response, instruction_results, scores)` tuples in input order.
 
 ## Types
 
@@ -94,6 +148,9 @@ class InstructionResult:
     instruction_id: str
     strict_pass: bool
     loose_pass: bool
+
+# Type alias for batch evaluation results
+EvalResult = tuple[BenchmarkSample, str, list[InstructionResult], EvaluationScores]
 ```
 
 ## License
