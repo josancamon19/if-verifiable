@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "if-verifiable"
+version = "0.1.0"
+description = "Lightweight evaluation library for IFBench and IFEval instruction-following benchmarks"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+authors = [
+    { name = "Joan Cabezas" }
+]
+keywords = [
+    "llm",
+    "evaluation", 
+    "benchmark",
+    "instruction-following",
+    "ifeval",
+    "ifbench",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "datasets>=4.4.2",
+    "emoji>=2.15.0",
+    "immutabledict>=4.2.2",
+    "langdetect>=1.0.9",
+    "nltk>=3.9.2",
+    "spacy>=3.8.11",
+    "syllapy>=0.7.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/joancabezas/if-verifiable"
+Repository = "https://github.com/joancabezas/if-verifiable"
+Issues = "https://github.com/joancabezas/if-verifiable/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/if_verifiable"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
