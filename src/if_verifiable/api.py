@@ -9,7 +9,7 @@ from if_verifiable.types import (
     BenchmarkSample,
     BenchmarkName,
 )
-from if_verifiable.common import evaluate_instructions, InstructionResult
+from if_verifiable.common import evaluate_instructions, InstructionResult, EvaluationScores
 
 
 # Dataset names on HuggingFace
@@ -79,7 +79,7 @@ def evaluate_output_for_sample(
     benchmark: BenchmarkName,
     sample: BenchmarkSample,
     response: str,
-) -> tuple[list[InstructionResult], dict[str, float]]:
+) -> tuple[list[InstructionResult], EvaluationScores]:
     """Evaluate a model's response against a benchmark sample.
 
     Args:
@@ -90,11 +90,11 @@ def evaluate_output_for_sample(
     Returns:
         A tuple of:
         - List of InstructionResult with pass/fail for each instruction
-        - Dict with aggregated scores:
-            - "strict": Fraction of instructions passed (strict mode)
-            - "loose": Fraction of instructions passed (loose mode)
-            - "all_strict": 1.0 if all instructions passed strict, else 0.0
-            - "all_loose": 1.0 if all instructions passed loose, else 0.0
+        - EvaluationScores with all 4 metrics:
+            - partial_strict: Fraction of instructions passed (strict mode)
+            - partial_loose: Fraction of instructions passed (loose mode)
+            - binary_strict: 1.0 if ALL instructions passed strict, else 0.0
+            - binary_loose: 1.0 if ALL instructions passed loose, else 0.0
 
     Raises:
         ValueError: If benchmark name is not recognized.
@@ -102,7 +102,7 @@ def evaluate_output_for_sample(
     Example:
         >>> sample = next(get_eval_data("ifeval"))
         >>> results, scores = evaluate_output_for_sample("ifeval", sample, "Hello world!")
-        >>> print(f"Strict score: {scores['strict']:.2%}")
+        >>> print(f"Partial strict: {scores.partial_strict:.2%}")
     """
     benchmark = benchmark.lower()
 

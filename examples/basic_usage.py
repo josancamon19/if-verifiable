@@ -14,10 +14,10 @@ def main():
     response = "This is a sample response without any commas."
 
     results, scores = evaluate_output_for_sample("ifeval", sample, response)
-    print(f"Strict score: {scores['strict']:.2%}")
-    print(f"Loose score: {scores['loose']:.2%}")
-    print(f"All passed (strict): {bool(scores['all_strict'])}")
-    print(f"All passed (loose): {bool(scores['all_loose'])}\n")
+    print(f"Partial strict: {scores.partial_strict:.2%}")
+    print(f"Partial loose: {scores.partial_loose:.2%}")
+    print(f"Binary strict (all passed): {bool(scores.binary_strict)}")
+    print(f"Binary loose (all passed): {bool(scores.binary_loose)}\n")
 
     for result in results:
         status = "✓" if result.strict_pass else "✗"
@@ -43,8 +43,8 @@ def main():
     """
 
     results, scores = evaluate_output_for_sample("ifbench", sample, response)
-    print(f"Strict score: {scores['strict']:.2%}")
-    print(f"Loose score: {scores['loose']:.2%}\n")
+    print(f"Partial strict: {scores.partial_strict:.2%}")
+    print(f"Partial loose: {scores.partial_loose:.2%}\n")
 
     for result in results:
         status = "✓" if result.strict_pass else "✗"

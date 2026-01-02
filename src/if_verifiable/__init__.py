@@ -15,7 +15,7 @@ Usage:
 
 from if_verifiable.api import get_eval_data, evaluate_output_for_sample
 from if_verifiable.types import IFEvalSample, IFBenchSample, BenchmarkSample
-from if_verifiable.common import InstructionResult
+from if_verifiable.common import InstructionResult, EvaluationScores, RewardType
 
 __version__ = "0.1.0"
 
@@ -24,10 +24,12 @@ __all__ = [
     "get_eval_data",
     "evaluate_output_for_sample",
     # Types
-    "IFEvalSample", 
+    "IFEvalSample",
     "IFBenchSample",
     "BenchmarkSample",
     "InstructionResult",
+    "EvaluationScores",
+    "RewardType",
     # Version
     "__version__",
 ]

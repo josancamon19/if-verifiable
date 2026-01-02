@@ -4,10 +4,38 @@ from typing import Any
 
 
 class RewardType(enum.Enum):
-    FULL_STRICT = "full_strict"
-    FULL_LOOSE = "full_loose"
+    """Types of reward/scoring metrics."""
+
+    BINARY_STRICT = "binary_strict"
+    BINARY_LOOSE = "binary_loose"
     PARTIAL_STRICT = "partial_strict"
     PARTIAL_LOOSE = "partial_loose"
+
+
+@dataclass
+class InstructionResult:
+    """Result of evaluating a single instruction."""
+
+    instruction_id: str
+    strict_pass: bool
+    loose_pass: bool
+
+
+@dataclass
+class EvaluationScores:
+    """Aggregated evaluation scores for a sample.
+
+    Attributes:
+        partial_strict: Fraction of instructions passed (strict mode, 0.0-1.0).
+        partial_loose: Fraction of instructions passed (loose mode, 0.0-1.0).
+        binary_strict: 1.0 if ALL instructions passed strict, else 0.0.
+        binary_loose: 1.0 if ALL instructions passed loose, else 0.0.
+    """
+
+    partial_strict: float
+    partial_loose: float
+    binary_strict: float
+    binary_loose: float
 
 
 def get_loose_transformations(response: str) -> list[str]:
@@ -52,36 +80,27 @@ def strip_thinking(content: str) -> str:
     return s
 
 
-@dataclass
-class InstructionResult:
-    """Result of evaluating a single instruction."""
-
-    instruction_id: str
-    strict_pass: bool
-    loose_pass: bool
-
-
 def evaluate_instructions(
     response: str,
     instruction_id_list: list[str],
     kwargs_list: list[dict[str, Any]],
     prompt: str,
     instruction_registry: dict[str, Any],
-) -> tuple[list[InstructionResult], dict[str, float]]:
+) -> tuple[list[InstructionResult], EvaluationScores]:
     """Evaluate response against all instructions.
 
     Returns:
         - List of InstructionResult with strict/loose pass status for each instruction
-        - Dict with aggregated scores
+        - EvaluationScores with all 4 scoring metrics
     """
     response = strip_thinking(response)
     if not response.strip():
-        return [], {
-            "strict": 0.0,
-            "loose": 0.0,
-            "all_strict": 0.0,
-            "all_loose": 0.0,
-        }
+        return [], EvaluationScores(
+            partial_strict=0.0,
+            partial_loose=0.0,
+            binary_strict=0.0,
+            binary_loose=0.0,
+        )
 
     results: list[InstructionResult] = []
     response_variants = get_loose_transformations(response)
@@ -126,21 +145,21 @@ def evaluate_instructions(
     # Calculate scores
     num_instructions = len(results)
     if num_instructions == 0:
-        return results, {
-            "strict": 0.0,
-            "loose": 0.0,
-            "all_strict": 0.0,
-            "all_loose": 0.0,
-        }
+        return results, EvaluationScores(
+            partial_strict=0.0,
+            partial_loose=0.0,
+            binary_strict=0.0,
+            binary_loose=0.0,
+        )
 
     strict_correct = sum(r.strict_pass for r in results)
     loose_correct = sum(r.loose_pass for r in results)
 
-    return results, {
+    return results, EvaluationScores(
         # Instruction-level: fraction of instructions that pass
-        "strict": strict_correct / num_instructions,
-        "loose": loose_correct / num_instructions,
+        partial_strict=strict_correct / num_instructions,
+        partial_loose=loose_correct / num_instructions,
         # Prompt-level: all instructions must pass (binary)
-        "all_strict": float(strict_correct == num_instructions),
-        "all_loose": float(loose_correct == num_instructions),
-    }
+        binary_strict=float(strict_correct == num_instructions),
+        binary_loose=float(loose_correct == num_instructions),
+    )

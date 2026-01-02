@@ -4,17 +4,12 @@ Lightweight Python library for evaluating LLM outputs against instruction-follow
 
 Supports:
 - **IFEval** (`google/IFEval`) - Google's Instruction Following Eval
-- **IFBench** (`allenai/IFBench`) - Allen AI's instruction-following benchmark
+- **IFBench** (`allenai/IFBench_test`) - Allen AI's instruction-following benchmark
 
 ## Installation
 
 ```bash
 pip install if-verifiable
-```
-
-For IFBench support (includes emoji/syllable checkers):
-```bash
-pip install if-verifiable[ifbench]
 ```
 
 ## Usage
@@ -34,10 +29,11 @@ response = "Your model's response here..."
 
 results, scores = evaluate_output_for_sample("ifeval", sample, response)
 
-print(f"Strict score: {scores['strict']:.2%}")
-print(f"Loose score: {scores['loose']:.2%}")
-print(f"All instructions passed (strict): {scores['all_strict']}")
-print(f"All instructions passed (loose): {scores['all_loose']}")
+# Access scores (4 metrics available)
+print(f"Partial strict: {scores.partial_strict:.2%}")
+print(f"Partial loose: {scores.partial_loose:.2%}")
+print(f"Binary strict (all passed): {scores.binary_strict}")
+print(f"Binary loose (all passed): {scores.binary_loose}")
 
 # Check individual instruction results
 for result in results:
@@ -53,7 +49,7 @@ Load evaluation samples from a benchmark dataset.
 - `benchmark`: Either `"ifeval"` or `"ifbench"`
 - Returns: Iterator of `IFEvalSample` or `IFBenchSample` dataclasses
 
-### `evaluate_output_for_sample(benchmark, sample, response) -> tuple[list[InstructionResult], dict]`
+### `evaluate_output_for_sample(benchmark, sample, response) -> tuple[list[InstructionResult], EvaluationScores]`
 
 Evaluate a model response against a benchmark sample.
 
@@ -63,13 +59,13 @@ Evaluate a model response against a benchmark sample.
 
 Returns:
 - `list[InstructionResult]`: Per-instruction pass/fail results
-- `dict`: Aggregated scores with keys:
-  - `strict`: Fraction of instructions passed (strict evaluation)
-  - `loose`: Fraction of instructions passed (loose evaluation - allows minor formatting variations)
-  - `all_strict`: 1.0 if all instructions passed strict, else 0.0
-  - `all_loose`: 1.0 if all instructions passed loose, else 0.0
+- `EvaluationScores`: Aggregated scores dataclass with 4 metrics:
+  - `partial_strict`: Fraction of instructions passed (strict evaluation)
+  - `partial_loose`: Fraction of instructions passed (loose - allows formatting variations)
+  - `binary_strict`: 1.0 if ALL instructions passed strict, else 0.0
+  - `binary_loose`: 1.0 if ALL instructions passed loose, else 0.0
 
-## Sample Types
+## Types
 
 ```python
 @dataclass
@@ -81,13 +77,25 @@ class IFEvalSample:
 
 @dataclass  
 class IFBenchSample:
-    key: int
+    key: str
     prompt: str
     instruction_id_list: list[str]
     kwargs: list[dict[str, Any]]
+
+@dataclass
+class EvaluationScores:
+    partial_strict: float  # Fraction of instructions passed (strict)
+    partial_loose: float   # Fraction of instructions passed (loose)
+    binary_strict: float   # 1.0 if all passed strict, else 0.0
+    binary_loose: float    # 1.0 if all passed loose, else 0.0
+
+@dataclass
+class InstructionResult:
+    instruction_id: str
+    strict_pass: bool
+    loose_pass: bool
 ```
 
 ## License
 
 Apache 2.0
-
