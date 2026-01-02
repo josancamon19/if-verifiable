@@ -6,7 +6,7 @@
 #   ./scripts/publish.sh test     # Publish to TestPyPI first
 #
 # Prerequisites:
-#   - pip install build twine
+#   - uv installed
 #   - PyPI API token set as TWINE_PASSWORD or in ~/.pypirc
 
 set -e
@@ -22,8 +22,11 @@ echo -e "${GREEN}📦 Building if-verifiable...${NC}"
 # Clean previous builds
 rm -rf dist/ build/ *.egg-info src/*.egg-info
 
+# Ensure build and twine are installed
+uv pip install build twine --quiet
+
 # Build the package
-python -m build
+uv run python -m build
 
 echo -e "${GREEN}✅ Build complete!${NC}"
 echo ""
@@ -33,7 +36,7 @@ ls -la dist/
 if [ "$1" = "test" ]; then
     echo ""
     echo -e "${YELLOW}🧪 Publishing to TestPyPI...${NC}"
-    python -m twine upload --repository testpypi dist/*
+    uv run python -m twine upload --repository testpypi dist/*
     echo ""
     echo -e "${GREEN}✅ Published to TestPyPI!${NC}"
     echo "Install with: pip install --index-url https://test.pypi.org/simple/ if-verifiable"
@@ -51,9 +54,8 @@ fi
 
 echo ""
 echo -e "${GREEN}🚀 Publishing to PyPI...${NC}"
-python -m twine upload dist/*
+uv run python -m twine upload dist/*
 
 echo ""
 echo -e "${GREEN}✅ Published to PyPI!${NC}"
 echo "Install with: pip install if-verifiable"
-
