@@ -23,7 +23,7 @@ from if_verifiable.api import (
 from if_verifiable.common import EvaluationScores, InstructionResult, RewardType
 from if_verifiable.types import BenchmarkSample, IFBenchSample, IFEvalSample
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     # Main API

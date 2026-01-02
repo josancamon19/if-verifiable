@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "if-verifiable"
-version = "0.1.0"
+version = "0.1.1"
 description = "Lightweight evaluation library for IFBench and IFEval instruction-following benchmarks"
 readme = "README.md"
 license = { text = "Apache-2.0" }
