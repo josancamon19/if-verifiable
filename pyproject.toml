@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "if-verifiable"
-version = "0.1.1"
+version = "0.1.2"
 description = "Lightweight evaluation library for IFBench and IFEval instruction-following benchmarks"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -36,7 +36,6 @@ dependencies = [
     "immutabledict>=4.2.2",
     "langdetect>=1.0.9",
     "nltk>=3.9.2",
-    "spacy>=3.8.11",
     "syllapy>=0.7.2",
 ]
 

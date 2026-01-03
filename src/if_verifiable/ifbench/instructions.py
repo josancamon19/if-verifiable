@@ -38,11 +38,8 @@ from typing import Dict, Optional, Sequence, Union
 import emoji
 import nltk
 import syllapy
-from spacy.cli.download import download
 
 from if_verifiable.ifbench import instructions_util
-
-download("en_core_web_sm")
 
 logger = logging.getLogger(__name__)
 
